@@ -10,13 +10,13 @@ import Navbar from './components/Navbar';
 function App() {
     return (
         <BrowserRouter>
-            <div className="flex min-h-screen bg-slate-50">
+            <div className="flex min-h-screen" style={{ background: 'linear-gradient(135deg, #f1f5f9 0%, #e8edf5 100%)' }}>
                 <Sidebar />
 
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex flex-col">
                     <Navbar />
 
-                    <main className="p-6">
+                    <main className="flex-1 p-6 lg:p-8">
                         <Routes>
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/students" element={<Students />} />
