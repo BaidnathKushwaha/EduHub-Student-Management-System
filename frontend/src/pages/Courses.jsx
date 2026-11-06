@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getCourses, addCourse, deleteCourse } from '../services/api';
-import { Plus, Trash2 } from 'lucide-react';
+import { getCourses, addCourse, updateCourse, deleteCourse } from '../services/api';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 
 const emptyForm = {
     code: '',
@@ -13,6 +13,7 @@ function Courses() {
     const [courses, setCourses] = useState([]);
     const [form, setForm] = useState(emptyForm);
     const [showForm, setShowForm] = useState(false);
+    const [editingCourseId, setEditingCourseId] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -36,24 +37,61 @@ function Courses() {
         });
     };
 
+    const openAddForm = () => {
+        setForm(emptyForm);
+        setEditingCourseId(null);
+        setError('');
+        setShowForm(true);
+    };
+
+    const openEditForm = (course) => {
+        setForm({
+            code: course.code,
+            name: course.name,
+            department: course.department,
+            creditHours: course.creditHours
+        });
+        setEditingCourseId(course.id);
+        setError('');
+        setShowForm(true);
+    };
+
+    const closeForm = () => {
+        setShowForm(false);
+        setEditingCourseId(null);
+        setForm(emptyForm);
+        setError('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
-        try {
-            await addCourse({
-                ...form,
-                creditHours: Number(form.creditHours)
-            });
+        const courseData = {
+            ...form,
+            code: form.code.trim(),
+            name: form.name.trim(),
+            department: form.department.trim(),
+            creditHours: Number(form.creditHours)
+        };
 
-            setForm(emptyForm);
-            setShowForm(false);
+        try {
+            if (editingCourseId !== null) {
+                await updateCourse(editingCourseId, courseData);
+            } else {
+                await addCourse(courseData);
+            }
+
+            closeForm();
             await loadCourses();
         } catch (err) {
             setError(
                 err.response?.data?.message ||
-                'Unable to add course. Check the entered details.'
+                err.response?.data?.error ||
+                (editingCourseId !== null
+                    ? 'Unable to update course. Check the entered details.'
+                    : 'Unable to add course. Check the entered details.')
             );
         } finally {
             setLoading(false);
@@ -73,6 +111,7 @@ function Courses() {
         } catch (err) {
             setError(
                 err.response?.data?.message ||
+                err.response?.data?.error ||
                 'Unable to delete this course.'
             );
         }
@@ -91,7 +130,7 @@ function Courses() {
                 </div>
 
                 <button
-                    onClick={() => setShowForm(!showForm)}
+                    onClick={openAddForm}
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                 >
                     <Plus size={18} />
@@ -110,6 +149,10 @@ function Courses() {
                     onSubmit={handleSubmit}
                     className="bg-white border rounded-xl p-5 mb-6 grid grid-cols-1 md:grid-cols-2 gap-4"
                 >
+                    <h2 className="md:col-span-2 text-lg font-semibold text-slate-800">
+                        {editingCourseId !== null ? 'Edit Course' : 'Add Course'}
+                    </h2>
+
                     <input
                         name="code"
                         value={form.code}
@@ -156,12 +199,16 @@ function Courses() {
                             disabled={loading}
                             className="bg-blue-600 text-white px-5 py-2 rounded-lg disabled:opacity-50"
                         >
-                            {loading ? 'Saving...' : 'Save Course'}
+                            {loading
+                                ? 'Saving...'
+                                : editingCourseId !== null
+                                    ? 'Save Changes'
+                                    : 'Save Course'}
                         </button>
 
                         <button
                             type="button"
-                            onClick={() => setShowForm(false)}
+                            onClick={closeForm}
                             className="border px-5 py-2 rounded-lg"
                         >
                             Cancel
@@ -186,23 +233,30 @@ function Courses() {
                     <tbody>
                         {courses.map(course => (
                             <tr key={course.id} className="border-t">
-                                <td className="p-4 font-medium">
-                                    {course.code}
-                                </td>
+                                <td className="p-4 font-medium">{course.code}</td>
                                 <td className="p-4">{course.name}</td>
                                 <td className="p-4">{course.department}</td>
                                 <td className="p-4">{course.creditHours}</td>
+                                <td className="p-4">{course.enrolledStudents}</td>
                                 <td className="p-4">
-                                    {course.enrolledStudents}
-                                </td>
-                                <td className="p-4">
-                                    <button
-                                        onClick={() => handleDelete(course.id)}
-                                        className="text-red-600 hover:text-red-800"
-                                        title="Delete course"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => openEditForm(course)}
+                                            className="text-blue-600 hover:text-blue-800"
+                                            title="Edit course"
+                                            aria-label={`Edit ${course.name}`}
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(course.id)}
+                                            className="text-red-600 hover:text-red-800"
+                                            title="Delete course"
+                                            aria-label={`Delete ${course.name}`}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
